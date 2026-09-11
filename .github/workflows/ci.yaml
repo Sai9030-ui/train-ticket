@@ -77,3 +77,62 @@ jobs:
             whoami
             echo "Tomcat status:"
             sudo systemctl is-active tomcat10
+  deploy-dev:
+    name: Deploy to DEV
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download WAR Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: train-ticket-war
+          path: deploy
+
+      - name: Check WAR File
+        run: |
+          echo "Downloaded files:"
+          ls -lah deploy/
+          echo "WAR files:"
+          find deploy -name "*.war" -type f
+
+      - name: Copy WAR to DEV
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.DEV_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "deploy/*.war"
+          target: "/home/ubuntu/"
+
+      - name: Deploy WAR to DEV Tomcat
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEV_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            echo "Stopping Tomcat..."
+            sudo systemctl stop tomcat10
+
+            echo "Removing previous application..."
+            sudo rm -rf /var/lib/tomcat10/webapps/TrainBook-1.0.0-SNAPSHOT
+            sudo rm -f /var/lib/tomcat10/webapps/TrainBook-1.0.0-SNAPSHOT.war
+
+            echo "Copying new WAR..."
+            sudo cp /home/ubuntu/*.war /var/lib/tomcat10/webapps/TrainBook-1.0.0-SNAPSHOT.war
+
+            echo "Starting Tomcat..."
+            sudo systemctl start tomcat10
+
+            echo "Checking Tomcat..."
+            sudo systemctl is-active tomcat10
+
+            echo "Waiting for application deployment..."
+            sleep 10
+
+            echo "Checking deployed files..."
+            ls -lah /var/lib/tomcat10/webapps/
+
+            echo "Checking application..."
+            curl -f http://localhost:8080/TrainBook-1.0.0-SNAPSHOT/
