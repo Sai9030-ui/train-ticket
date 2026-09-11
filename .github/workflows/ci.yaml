@@ -104,9 +104,9 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           source: "deploy/*.war"
           target: "/home/ubuntu/"
-
+    
       - name: Deploy WAR to DEV Tomcat
-        uses: appleboy/ssh-action@v1
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.DEV_HOST }}
           username: ${{ secrets.EC2_USER }}
@@ -119,8 +119,19 @@ jobs:
             sudo rm -rf /var/lib/tomcat10/webapps/TrainBook-1.0.0-SNAPSHOT
             sudo rm -f /var/lib/tomcat10/webapps/TrainBook-1.0.0-SNAPSHOT.war
 
+            echo "Finding downloaded WAR..."
+            WAR_FILE=$(find /home/ubuntu -type f -name "*.war" | head -n 1)
+
+            echo "WAR found at:"
+            echo "$WAR_FILE"
+
+            if [ -z "$WAR_FILE" ]; then
+              echo "ERROR: WAR file was not found on DEV server"
+              exit 1
+            fi
+
             echo "Copying new WAR..."
-            sudo cp /home/ubuntu/*.war /var/lib/tomcat10/webapps/TrainBook-1.0.0-SNAPSHOT.war
+            sudo cp "$WAR_FILE" /var/lib/tomcat10/webapps/TrainBook-1.0.0-SNAPSHOT.war
 
             echo "Starting Tomcat..."
             sudo systemctl start tomcat10
