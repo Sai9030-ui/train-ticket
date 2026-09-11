@@ -276,3 +276,73 @@ jobs:
 
             echo "Checking application..."
             curl -f http://localhost:8080/TrainBook-1.0.0-SNAPSHOT/
+              deploy-prod:
+    name: Deploy to PROD
+    needs: deploy-preprod
+    runs-on: ubuntu-latest
+    environment: PROD
+
+    steps:
+      - name: Download WAR Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: train-ticket-war
+          path: deploy
+
+      - name: Check WAR File
+        run: |
+          echo "Downloaded files:"
+          ls -lah deploy/
+          find deploy -name "*.war" -type f
+
+      - name: Copy WAR to PROD
+        uses: appleboy/scp-action@v1.0.0
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "deploy/*.war"
+          target: "/home/ubuntu/"
+
+      - name: Deploy WAR to PROD Tomcat
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            echo "Stopping Tomcat..."
+            sudo systemctl stop tomcat10
+
+            echo "Removing previous application..."
+            sudo rm -rf /var/lib/tomcat10/webapps/TrainBook-1.0.0-SNAPSHOT
+            sudo rm -f /var/lib/tomcat10/webapps/TrainBook-1.0.0-SNAPSHOT.war
+
+            echo "Finding downloaded WAR..."
+            WAR_FILE=$(find /home/ubuntu -type f -name "*.war" | head -n 1)
+
+            echo "WAR found at:"
+            echo "$WAR_FILE"
+
+            if [ -z "$WAR_FILE" ]; then
+              echo "ERROR: WAR file was not found on PROD server"
+              exit 1
+            fi
+
+            echo "Copying new WAR..."
+            sudo cp "$WAR_FILE" /var/lib/tomcat10/webapps/TrainBook-1.0.0-SNAPSHOT.war
+
+            echo "Starting Tomcat..."
+            sudo systemctl start tomcat10
+
+            echo "Checking Tomcat..."
+            sudo systemctl is-active tomcat10
+
+            echo "Waiting for application deployment..."
+            sleep 10
+
+            echo "Checking deployed files..."
+            ls -lah /var/lib/tomcat10/webapps/
+
+            echo "Running PROD health check..."
+            curl -f http://localhost:8080/TrainBook-1.0.0-SNAPSHOT/
