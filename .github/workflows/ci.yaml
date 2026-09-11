@@ -138,36 +138,36 @@ jobs:
 
             echo "Checking Tomcat..."
             sudo systemctl is-active tomcat10
+  deploy-test:
+    name: Deploy to TEST
+    needs: deploy-dev
+    runs-on: ubuntu-latest
 
-            echo "Waiting for application deployment..."
-            sleep 10
-
-            echo "Checking deployed files..."
-              deploy-test:
-  name: Deploy to TEST
-needs: deploy-dev
-runs-on: ubuntu-latest
-steps:
-    - name: Download WAR Artifact
-uses: actions/download-artifact@v4:
+    steps:
+      - name: Download WAR Artifact
+        uses: actions/download-artifact@v4
+        with:
           name: train-ticket-war
           path: deploy
-          name: Check WAR File
-run: |
+
+      - name: Check WAR File
+        run: |
           echo "Downloaded files:"
           ls -lah deploy/
           find deploy -name "*.war" -type f
-name: Copy WAR to TEST
-uses: appleboy/scp-action@v1.0.0
-with:
+
+      - name: Copy WAR to TEST
+        uses: appleboy/scp-action@v1.0.0
+        with:
           host: ${{ secrets.TEST_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           source: "deploy/*.war"
           target: "/home/ubuntu/"
-name: Deploy WAR to TEST Tomcat
-uses: appleboy/ssh-action@v1.0.3
-with:
+
+      - name: Deploy WAR to TEST Tomcat
+        uses: appleboy/ssh-action@v1.0.3
+        with:
           host: ${{ secrets.TEST_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
@@ -203,10 +203,6 @@ with:
             sleep 10
 
             echo "Checking deployed files..."
-            ls -lah /var/lib/tomcat10/webapps/
-
-            echo "Checking application..."
-            curl -f http://localhost:8080/TrainBook-1.0.0-SNAPSHOT/
             ls -lah /var/lib/tomcat10/webapps/
 
             echo "Checking application..."
