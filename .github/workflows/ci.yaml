@@ -55,3 +55,25 @@ jobs:
         with:
           name: train-ticket-war
           path: target/*.war
+  test-dev-connection:
+
+    needs: build
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Test SSH Connection to DEV
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEV_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            echo "Connected to DEV EC2 successfully"
+            echo "Hostname:"
+            hostname
+            echo "User:"
+            whoami
+            echo "Tomcat status:"
+            sudo systemctl is-active tomcat10
