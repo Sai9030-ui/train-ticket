@@ -273,7 +273,7 @@ jobs:
 
             echo "Checking deployed files..."
             ls -lah /var/lib/tomcat10/webapps/
-      deploy-prod:
+  deploy-prod:
     name: Deploy to PROD
     needs: deploy-preprod
     runs-on: ubuntu-latest
@@ -343,7 +343,4 @@ jobs:
 
             echo "Running PROD health check..."
             curl -f http://localhost:8080/TrainBook-1.0.0-SNAPSHOT/
-
-            echo "Checking application..."
-            curl -f http://localhost:8080/TrainBook-1.0.0-SNAPSHOT/
-    
+      
